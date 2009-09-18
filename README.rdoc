@@ -1,0 +1,40 @@
+=Test Spec Script
+
+This script accepts a directory path as an argument and converts all tests found there from test/spec to Rails 2.3+ standard test syntax.
+
+http://github.com/xing/test-spec-script
+
+
+
+Here's an example to get an idea of the change:
+
+===before
+
+  context "A new pair of running shoes", ActiveRecord::TestCase do
+    it "should be comfortable" do
+      RunningShoes.new.should.be :comfortable
+    end
+  end
+
+===after 
+
+  class ANewPairOfRunningShoesTest < ActiveRecord::TestCase 
+    test "should be comfortable" do
+      assert(RunningShoes.new == :comfortable)
+    end
+  end
+
+
+==Usage
+
+  ./convert-test-spec-to-test-unit engines/shoeshop/
+
+
+==Credits
+
+The script was initiated by {Thomas Baustert}[http://github.com/thomasbaustert] and greatly extended by {Stefan Kaes}[http://github.com/skaes]. 
+{Phillip Oertel}[http://github.com/phillipoertel] provided a few lines as well.
+
+==Copyright
+
+Copyright (c) 2009 {XING AG}[http://www.xing.com/]. See LICENSE for details.

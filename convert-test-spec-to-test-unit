@@ -1,0 +1,171 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'activesupport'
+
+##
+# Script to convert test-spec tests to the Rails 2.3 test cases
+#
+
+class TestConverter
+  attr_accessor :files, :options
+
+  def initialize(options = {})
+    @files = ARGV.map { |f| File.directory?(f) ? Dir.glob(f+'/**/*test.rb') : f }.flatten
+    @options = options
+  end
+
+  def run
+    files.each do |f|
+      convert_file f
+      $stderr.puts "converted #{f}"
+    end
+  end
+
+  def convert_file(filename)
+    # read file contents and process line by line
+    target_lines = []
+    File.open(filename).each_line do |line|
+      target_lines << convert_line(line, filename)
+    end
+
+    file = options[:test] ? $stdout : File.open(filename, "w")
+    # overwrite the file with the changes
+    target_lines.each {|line| file.puts line }
+    file.close unless options[:test]
+  end
+
+  def convert_line(line, filename)
+    line.rstrip!
+
+    result = ""
+    if line =~ /^(\s*)/
+      result << $1
+      line = line[$1.length..-1]
+    end
+
+    case line
+
+    when /^(describe|context)\s+(['"])([^\2]*?)\2\s*(,\s*(.*))?\s+do/
+      # describe "The Memo initial method" => class TheMemoInitialMethodTest
+      base_clazz = $5 || "ActiveSupport::TestCase"
+      test_clazz = $3.split.join('_').gsub(/[^a-z0-9_]/i, '').camelize
+      result << "class #{test_clazz}Test < #{base_clazz}"
+
+    when /^(setup|before)\s+do/
+      # setup do => def setup
+      result <<  "def setup"
+
+    when /^(after|teardown)\s+do/
+      # teardown do => def teardown
+      result << "def teardown"
+
+    when /^(specify|it)\s*['"](.*)['"]\s*do/
+      # specify "..." => test "..."
+      result << "test \"#{$2.gsub('"', "'")}\" do"
+
+    when /^use_controller\s*(.*)/
+      # use_controller PostingsController => tests PostingsController
+      result << "tests #{$1.strip}"
+
+    when /^(.*)\.should\.equal\s*(.*)/
+      # @matrix.get_similarity(1,2).should.equal 0.44
+      result << "assert_equal(#{$2.strip}, #{$1.strip})"
+
+    when /^(.*)\.should(\.match|\s+=~)\s*(.*)/
+      # @matrix.get_similarity(1,2).should.match "acbc"
+      result << "assert_match(#{$3.strip}, #{$1.strip})"
+
+    when /^(.*)\.should\.not(\.match|\s+=~)\s*(.*)/
+      # @matrix.get_similarity(1,2).should.match "acbc"
+      result << "assert_no_match(#{$3.strip}, #{$1.strip})"
+
+    when /^(.*)\.should\s+==\s+(.*)/
+      # @matrix.get_similar(6).should == {7 => 0.2222, 8 => 0.3333}
+      result << "assert_equal(#{$2.strip}, #{$1.strip})"
+
+    when /^(.*)\.should\s+==\s*\(([^\)]*)\)/
+      # @matrix.get_similar(6).should == {7 => 0.2222, 8 => 0.3333}
+      result << "assert_equal(#{$2.strip}, #{$1.strip})"
+
+    when /^(.*)\.should\.be\s+nil/
+      # @matrix.get_similarity(2,1).should.be nil
+      result << "assert_nil #{$1.strip}"
+
+    when /^(.*)\.should\.not\.be\s+nil/
+      # @matrix.get_similarity(2,1).should.not.be nil
+      result << "assert_not_nil #{$1.strip}"
+
+    when /^(.*)\.should\.not\.validate/
+        # @matrix.should.not.validate
+        result << "assert !(#{$1.strip}.valid?)"
+
+    when /^(.*)\.should.validate/
+        # @matrix.should.validate
+        result << "assert #{$1.strip}.valid?"
+
+    when /^(.*)\.should\.be\.a\.kind_of\s*(.*)/
+      # @matrix.get_similarity(2,1).should.be.a.kind_of Object
+      result << "assert_kind_of(#{$2.strip},#{$1.strip})"
+
+    when /^(.*)\.should\.be\.an\.instance_of\s*(.*)/
+      # @matrix.get_similarity(2,1).should.be.a.kind_of Object
+      result << "assert_instance_of(#{$2.strip},#{$1.strip})"
+
+    when /^(.*)(response\.)?status\.should\.be\s+(.+)/
+      # status.should.be :success
+      result << "assert_response #{$3.strip}"
+
+    when /^(.*)\.should\.(be)?\s*(>|<|>=|<=)\s+(.+)/
+      # @matrix.get_similarity(2,1).should.be > 3.5
+      result << "assert(#{$1.strip} #{$3} #{$4.strip})"
+
+    when /^(.*)\.should\.be\(([^\)]+)\)/
+      # @matrix.get_similarity(2,1).should.be(3.5)
+      result << "assert_same #{$2.strip}, #{$1.strip}"
+
+    when /^(.*)\.should\.be\s+(.+)/
+      # @matrix.get_similarity(2,1).should.be 3.5
+      result << "assert_same #{$2.strip}, #{$1.strip}"
+
+    when /^(.*)\.should\.not\.be\s+(.+)/
+      # @matrix.get_similarity(2,1).should.not.be 3.5
+      result << "assert_not_same #{$2.strip}, #{$1.strip}"
+
+    when /^(.*)\.should\.be\.(.+)/
+      # @matrix.get_similarity(2,1).should.be.empty
+      result << "assert(#{$1.strip}.#{$2.strip}?)"
+
+    when /^(.*)\.should\.not\.be\.(.+)/
+      # @matrix.get_similarity(2,1).should.not.be.empty
+      result << "assert(!#{$1.strip}.#{$2.strip}?)"
+
+    when /^(Proc.new|proc|lambda)\s*\{(.*)\}\.should\.not\.raise/
+      # Proc.new { @algorithm.similarity({1 => [1,1]}, 0) }.should.not.raise
+      result << "assert_nothing_raised { #{$2.strip} }"
+
+    when /^(Proc.new|proc|lambda)\s*\{(.*)\}\.should\.raise\s*\(?([^\)]*)\)?/
+      # Proc.new { @algorithm.similarity({1 => [1,1]}, 0) }.should.not.raise
+      result << "assert_raises(#{$3.strip}) { #{$2.strip} }"
+
+    when /^(.*)\.should\.not\.([a-z_]+)\s*(.+)/
+      # @matrix.get_similarity(2,1).should.include 5
+      result << "assert(!#{$1.strip}.#{$2.strip}?(#{$3.strip}))"
+
+    when /^(.*)\.should\.([a-z_]+)\s*(.+)/
+      # @matrix.get_similarity(2,1).should.include 5
+      result << "assert(#{$1.strip}.#{$2.strip}?(#{$3.strip}))"
+
+    else
+      result << line
+      if line =~ /\.should\./
+        $stderr.puts "unhandled should in file #{filename}: #{line}"
+      end
+    end
+    result
+  end
+
+end
+
+test = ARGV.delete('--test')
+TestConverter.new(:test => test).run
