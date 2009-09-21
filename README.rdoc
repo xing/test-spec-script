@@ -31,7 +31,7 @@ The script accepts a directory path from which it will recursively search for
 
   ./convert-test-spec-to-test-unit ./test
   
-You can use the <tt>--test</tt> option to print to stdout instead of overwriting
+You can use the <tt>--test</tt> or <tt>-t</tt>option to print to stdout instead of overwriting
 the files.
 
   ./convert-test-spec-to-test-unit ./test --test

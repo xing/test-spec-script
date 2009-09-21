@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
 require 'rubygems'
 require 'activesupport'
 
@@ -167,5 +168,17 @@ class TestConverter
 
 end
 
-test = ARGV.delete('--test')
-TestConverter.new(:test => test).run
+options = {}
+OptionParser.new do |opts|
+  opts.banner = <<-EOS
+    Converts all tests found in the given path from test/spec to Rails 2.3+ standard test syntax
+
+    Usage: #{__FILE__} [options] path
+  EOS
+
+  opts.on("-t", "--test", "send output to console instead of changing files") do |t|
+    options[:test] = t
+  end
+end.parse!
+
+TestConverter.new(options).run
