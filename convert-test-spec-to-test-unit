@@ -37,7 +37,7 @@ class TestConverter
   end
 
   def convert_line(line, filename)
-    line.rstrip!
+    line.rstrip! if options[:strip_whitespaces]
 
     result = ""
     if line =~ /^(\s*)/
@@ -175,6 +175,10 @@ OptionParser.new do |opts|
 
     Usage: #{__FILE__} [options] path
   EOS
+
+  opts.on("-s", "--strip-whitespaces", "strip whitespaces from blank lines") do |s|
+    options[:strip_whitespaces] = s
+  end
 
   opts.on("-t", "--test", "send output to console instead of changing files") do |t|
     options[:test] = t

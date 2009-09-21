@@ -36,6 +36,8 @@ the files.
 
   ./convert-test-spec-to-test-unit ./test --test
 
+There is a <tt>--strip-whitespaces</tt> or <tt>-s</tt> option that strips whitespaces from empty lines.
+
 
 ==Credits
 
