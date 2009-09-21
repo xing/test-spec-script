@@ -1,6 +1,6 @@
 =Test Spec Script
 
-This script accepts a directory path as an argument and converts all tests found there from test/spec to Rails 2.3+ standard test syntax.
+This script converts test files from test/spec to Rails 2.3+ standard test syntax.
 
 http://github.com/xing/test-spec-script
 
@@ -26,7 +26,15 @@ Here's an example to get an idea of the change:
 
 ==Usage
 
-  ./convert-test-spec-to-test-unit engines/shoeshop/
+The script accepts a directory path from which it will recursively search for 
+*test.rb files to convert.
+
+  ./convert-test-spec-to-test-unit ./test
+  
+You can use the <tt>--test</tt> option to print to stdout instead of overwriting
+the files.
+
+  ./convert-test-spec-to-test-unit ./test --test
 
 
 ==Credits
